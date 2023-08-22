@@ -101,6 +101,8 @@
 (define (universal-read-line)
   ;;just an alias
   (read-line (current-input-port) 'any))
+(define (format-and-displayln template . segments)
+  (displayln (apply format template segments)))
 (define (input-speed)
   ;;return the typed string and the words-per-minute (WPM) of the typed string.
   (call-with-values (lambda () (time-apply universal-read-line null))
@@ -120,8 +122,8 @@
   (define max-wpm (box 0.0))
   (define max-accuracy (box 0.0))
   (case-lambda
-    ((_) (displayln (format "maximum wpm: ~a" (unbox max-wpm)))
-         (displayln (format "maximum accuracy: ~a" (unbox max-accuracy))))
+    ((_) (format-and-displayln "maximum wpm: ~a" (unbox max-wpm))
+         (format-and-displayln "maximum accuracy: ~a" (unbox max-accuracy)))
     (()
      (define reference (gen))
      (cond (reference
@@ -134,9 +136,9 @@
             (define accur (accuracy typed reference))
             (cond ((> accur (unbox max-accuracy)) (set-box! max-accuracy accur)))
             (cond ((> wpm (unbox max-wpm)) (set-box! max-wpm wpm)))
-            (displayln (format "wpm: ~a" wpm))
-            (displayln (format "accuracy: ~a" accur)))
-           (else (displayln "No more paragraphs about ~s are available." topics))))))
+            (format-and-displayln "wpm: ~a" wpm)
+            (format-and-displayln "accuracy: ~a" accur))
+           (else (format-and-displayln "No more paragraphs about ~s are available." topics))))))
 
 (module+ main
   ;; (Optional) main submodule. Put code here if you need it to be executed when
@@ -145,15 +147,21 @@
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
 
   (require racket/cmdline raco/command-name racket/contract)
+  (define database-box (box database))
   (command-line
     #:program (short-program+command-name)
-    #:once-each
+    #:once-any
+    [("-d" "--database")
+     d
+     "Specify the database"
+     (set-box! database-box d)]
+    #:once-any
     [("-t" "--topics")
      =>
      (lambda (_ . lst)
        (contract (listof topic?) lst 'command-line 'topics)
        (call-with-input-file
-         database
+         (unbox database-box)
          (lambda (in)
            (define gen (make-paragraph-generator (in-lines in) (lambda (l) (with-topics? l lst))))
            (define handler (make-paragraph-logging-handler lst gen))
