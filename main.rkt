@@ -25,7 +25,7 @@
 
 ;; Code here
 
-(require racket/string racket/generator racket/runtime-path)
+(require racket/string racket/generator racket/runtime-path (for-syntax racket/base racket/list))
 
 (define-runtime-path default "./sample_paragraphs.txt")
 
@@ -111,11 +111,19 @@
 (define (make-paragraph-logging-handler topics)
   ;;when one argument is provided, it creates a procedure that prints the maximum WPM and accuracy.
   ;;when no argument is provided, it creates a procedure in terms of GEN that asks for input, and then computes and print the accuracy and WPM.
-  (define max-WPM (box 0.0))
-  (define max-accuracy (box 0.0))
+  (define-syntax (make-states stx)
+    (syntax-case stx ()
+      ((_ (name value) ...)
+       (with-syntax (((index ...) (range 0 (length (syntax->list #'(name ...))))))
+         #'(define-values (name ...)
+             (let ((states (vector value ...)))
+               (case-lambda (() (vector-ref states index))
+                            ((v) (vector-set! states index v)))
+               ...))))))
+  (make-states (max-WPM 0.0) (max-accuracy 0.0))
   (case-lambda
-    (() (format-and-displayln "maximum WPM: ~a" (unbox max-WPM))
-        (format-and-displayln "maximum accuracy: ~a" (unbox max-accuracy)))
+    (() (format-and-displayln "maximum WPM: ~a" (max-WPM))
+        (format-and-displayln "maximum accuracy: ~a" (max-accuracy)))
     ((reference)
      (cond (reference
             (displayln "Type the following paragraph and then press enter/return.")
@@ -125,8 +133,8 @@
             (newline)
             (define-values (typed WPM) (input-speed))
             (define accur (accuracy typed reference))
-            (cond ((> accur (unbox max-accuracy)) (set-box! max-accuracy accur)))
-            (cond ((> WPM (unbox max-WPM)) (set-box! max-WPM WPM)))
+            (cond ((> WPM (max-WPM)) (max-WPM WPM)))
+            (cond ((> accur (max-accuracy)) (max-accuracy accur)))
             (format-and-displayln "WPM: ~a" WPM)
             (format-and-displayln "accuracy: ~a" accur))
            (else (format-and-displayln "No more paragraphs about ~s are available." topics))))))
