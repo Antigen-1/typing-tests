@@ -117,9 +117,10 @@
        (with-syntax (((index ...) (range 0 (length (syntax->list #'(name ...))))))
          #'(define-values (name ...)
              (let ((states (vector value ...)))
-               (case-lambda (() (vector-ref states index))
-                            ((v) (vector-set! states index v)))
-               ...))))))
+               (values
+                (case-lambda (() (vector-ref states index))
+                             ((v) (vector-set! states index v)))
+                ...)))))))
   (make-states (max-WPM 0.0) (max-accuracy 0.0))
   (case-lambda
     (() (format-and-displayln "maximum WPM: ~a" (max-WPM))
